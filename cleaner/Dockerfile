@@ -1,8 +1,8 @@
 FROM alpine:latest
 
-COPY cleaner.sh /etc/periodic/hourly/cleaner.sh
+COPY cleaner /etc/periodic/hourly/cleaner
 
-RUN chmod +x /etc/periodic/hourly/cleaner.sh
+RUN chmod +x /etc/periodic/hourly/cleaner
 
 VOLUME ["/data"]
 
