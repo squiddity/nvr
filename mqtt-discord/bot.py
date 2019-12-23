@@ -3,6 +3,7 @@ import discord
 from hbmqtt.client import MQTTClient, ClientException
 from hbmqtt.session import ApplicationMessage
 from hbmqtt.mqtt.constants import QOS_1, QOS_2, QOS_0
+from io import BytesIO
 import re
 import yaml
 
@@ -16,13 +17,13 @@ async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
     try:
         while True:
             message = await mqttClient.deliver_message()
-            await handle_snapshot_message(message)
+            await handle_snapshot_message(message, discordClient)
     finally:
         await mqttClient.unsubscribe(['frigate/+/snapshot'])
         await mqttClient.disconnect()
 
 
-async def handle_snapshot_message(message: ApplicationMessage):
+async def handle_snapshot_message(message: ApplicationMessage, discordClient: discord.Client):
     message_topic = message.topic
     camera_id_match = re.search('frigate/(.+?)/snapshot', message_topic)
     if camera_id_match:
@@ -31,7 +32,15 @@ async def handle_snapshot_message(message: ApplicationMessage):
         print("could not parse topic ", message_topic)
         return
     print("snapshot found: ", camera_id)
+
     snapshot_data = message.data
+    snapshot_file = discord.File(BytesIO(snapshot_data), filename="snapshot.jpg")
+
+    channel = discord.utils.get(discordClient.get_all_channels(), name=camera_id)
+    # channel might be null if discord isn't connected
+    if channel:
+        print("sending snapshot to ", channel.name)
+        await channel.send(file=snapshot_file)
 
 
 async def run_discord(discordClient: discord.Client):
