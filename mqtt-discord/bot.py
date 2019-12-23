@@ -2,7 +2,7 @@ import asyncio
 import discord
 from hbmqtt.client import MQTTClient, ClientException
 from hbmqtt.session import ApplicationMessage
-from hbmqtt.mqtt.constants import QOS_1, QOS_2, QOS_0
+from hbmqtt.mqtt.constants import QOS_0
 from io import BytesIO
 import re
 import time
@@ -12,11 +12,10 @@ CONFIG = yaml.safe_load(open("config.yml"))
 CHANNEL_LASTSENT = {}
 
 async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
+    print ("starting MQTT")
     await mqttClient.connect(CONFIG['mqtt']['uri'])
 
-    await mqttClient.subscribe([
-            ('frigate/+/snapshot', QOS_0),
-         ])
+    await mqttClient.subscribe([('frigate/+/snapshot', QOS_0)])
 
     try:
         while True:
@@ -39,8 +38,7 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
 
     elapsed_time  = time.time() - CHANNEL_LASTSENT.get(camera_id, 0)
     if elapsed_time < 10:
-        print("time elapsed since throttle", elapsed_time)
-        print("throttling and discarding snapshot for", camera_id)
+        print("throttling and discarding snapshot for", camera_id, elapsed_time)
         return
     else:
         print("new snapshot throttle set for", camera_id)
@@ -51,7 +49,7 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
 
     channel = discord.utils.get(discordClient.get_all_channels(), name=camera_id)
     if channel:
-        print("sending snapshot to ", channel.name)
+        print("sending snapshot to", channel.name)
         await channel.send(file=snapshot_file)
 
 async def run_discord(discordClient: discord.Client):
@@ -61,9 +59,6 @@ async def run_discord(discordClient: discord.Client):
 class DiscordClient(discord.Client):
    async def on_ready(self):
        print('Logged on as {0}!'.format(self.user))
-
-   async def on_message(self, message):
-       print('Message from {0.author}: {0.content}'.format(message))
 
 async def main():
     discordClient = DiscordClient()
