@@ -6,7 +6,7 @@ from hbmqtt.mqtt.constants import QOS_1, QOS_2, QOS_0
 import re
 import yaml
 
-async def run_mqtt(mqttClient: MQTTClient):
+async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
     await mqttClient.connect(CONFIG['mqtt']['uri'])
 
     await mqttClient.subscribe([
@@ -46,13 +46,11 @@ class DiscordClient(discord.Client):
        print('Message from {0.author}: {0.content}'.format(message))
 
 CONFIG = yaml.safe_load(open("config.yml"))
-loop = asyncio.get_event_loop()
-discordClient = DiscordClient(loop=loop)
-mqttClient = MQTTClient(loop=loop)
-loop.create_task(run_mqtt(mqttClient))
-loop.create_task(run_discord(discordClient))
-loop.run_forever()
 
-#asyncio.run(asyncio.wait({run_mqtt(), discordClient.start(CONFIG['discord']['token'])}, return_when=asyncio.FIRST_EXCEPTION))
+async def main():
+    discordClient = DiscordClient()
+    mqttClient = MQTTClient()
+    await asyncio.wait({run_mqtt(mqttClient, discordClient), run_discord(discordClient)}, return_when=asyncio.FIRST_EXCEPTION)
 
-#if __name__ == '__main__':
+if __name__ == '__main__':
+    asyncio.run(main())
