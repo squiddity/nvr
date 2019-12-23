@@ -6,13 +6,10 @@ from hbmqtt.mqtt.constants import QOS_1, QOS_2, QOS_0
 import re
 import yaml
 
-async def run_mqtt():
-    mqttClient = MQTTClient()
+async def run_mqtt(mqttClient: MQTTClient):
     await mqttClient.connect(CONFIG['mqtt']['uri'])
 
     await mqttClient.subscribe([
- #           ('$SYS/broker/uptime', QOS_1),
- #           ('$SYS/broker/load/#', QOS_2),
             ('frigate/+/snapshot', QOS_0),
          ])
 
@@ -37,18 +34,25 @@ async def handle_snapshot_message(message: ApplicationMessage):
     snapshot_data = message.data
 
 
-class DiscordClient(discord.Client):
-    async def on_ready(self):
-        print('Logged on as {0}!'.format(self.user))
+async def run_discord(discordClient: discord.Client):
+    print ("starting Discord")
+    await discordClient.start(CONFIG['discord']['token'])
 
-    async def on_message(self, message):
-        print('Message from {0.author}: {0.content}'.format(message))
+class DiscordClient(discord.Client):
+   async def on_ready(self):
+       print('Logged on as {0}!'.format(self.user))
+
+   async def on_message(self, message):
+       print('Message from {0.author}: {0.content}'.format(message))
 
 CONFIG = yaml.safe_load(open("config.yml"))
-discordClient = DiscordClient()
+loop = asyncio.get_event_loop()
+discordClient = DiscordClient(loop=loop)
+mqttClient = MQTTClient(loop=loop)
+loop.create_task(run_mqtt(mqttClient))
+loop.create_task(run_discord(discordClient))
+loop.run_forever()
 
-asyncio.run(asyncio.wait({run_mqtt()}, return_when=asyncio.FIRST_EXCEPTION))
-#asyncio.run(asyncio.wait({discordClient.start(CONFIG['discord']['token'])}, return_when=asyncio.FIRST_EXCEPTION))
 #asyncio.run(asyncio.wait({run_mqtt(), discordClient.start(CONFIG['discord']['token'])}, return_when=asyncio.FIRST_EXCEPTION))
 
 #if __name__ == '__main__':
