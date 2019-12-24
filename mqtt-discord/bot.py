@@ -4,16 +4,15 @@ from hbmqtt.client import MQTTClient, ClientException
 from hbmqtt.session import ApplicationMessage
 from hbmqtt.mqtt.constants import QOS_0
 from io import BytesIO
+import os
 import re
 import time
-import yaml
 
-CONFIG = yaml.safe_load(open("config.yml"))
 CHANNEL_LASTSENT = {}
 
 async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
     print ("starting MQTT")
-    await mqttClient.connect(CONFIG['mqtt']['uri'])
+    await mqttClient.connect(os.environ.get('MQTT'))
 
     await mqttClient.subscribe([('frigate/+/snapshot', QOS_0)])
 
@@ -56,7 +55,7 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
 
 async def run_discord(discordClient: discord.Client):
     print ("starting Discord")
-    await discordClient.start(CONFIG['discord']['token'])
+    await discordClient.start(os.environ.get('DISCORD'))
 
 class DiscordClient(discord.Client):
    async def on_ready(self):
