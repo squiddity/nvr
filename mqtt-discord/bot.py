@@ -51,6 +51,8 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
     if channel:
         print("sending snapshot to", channel.name)
         await channel.send(file=snapshot_file)
+    else:
+        print("could not find channel", camera_id)
 
 async def run_discord(discordClient: discord.Client):
     print ("starting Discord")
