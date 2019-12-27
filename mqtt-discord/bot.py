@@ -8,11 +8,22 @@ import os
 import re
 import time
 
-async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
+class DiscordClient(discord.Client):
+    def __init__(self):
+        super().__init__()
+        self.ready_event = asyncio.Event()
+
+    async def on_ready(self):
+        print('Logged on as {0}!'.format(self.user))
+        self.ready_event.set()
+
+async def run_mqtt(mqttClient: MQTTClient, discordClient: DiscordClient):
     print ("starting MQTT")
     await mqttClient.connect(os.environ.get('MQTT'))
 
     await mqttClient.subscribe([('frigate/+/snapshot', QOS_0)])
+
+    await discordClient.ready_event.wait()
 
     try:
         while True:
@@ -46,10 +57,6 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
 async def run_discord(discordClient: discord.Client):
     print ("starting Discord")
     await discordClient.start(os.environ.get('DISCORD'))
-
-class DiscordClient(discord.Client):
-   async def on_ready(self):
-       print('Logged on as {0}!'.format(self.user))
 
 async def main():
     discordClient = DiscordClient()
