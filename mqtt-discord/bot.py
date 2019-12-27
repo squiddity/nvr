@@ -8,8 +8,6 @@ import os
 import re
 import time
 
-CHANNEL_LASTSENT = {}
-
 async def run_mqtt(mqttClient: MQTTClient, discordClient: discord.Client):
     print ("starting MQTT")
     await mqttClient.connect(os.environ.get('MQTT'))
@@ -34,14 +32,6 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
         print("could not parse topic ", message_topic)
         return
     print("snapshot received: ", camera_id)
-
-    elapsed_time  = time.time() - CHANNEL_LASTSENT.get(camera_id, 0)
-    if elapsed_time < 10:
-        print("throttling and discarding snapshot for", camera_id, elapsed_time)
-        return
-    else:
-        print("new snapshot throttle set for", camera_id)
-        CHANNEL_LASTSENT[camera_id] = time.time()
 
     snapshot_data = message.data
     snapshot_file = discord.File(BytesIO(snapshot_data), filename="snapshot.jpg")
