@@ -38,7 +38,7 @@ class Dom5Bot(discord.Client):
             message = 'Time flows onwards in world {0} to turn {1}.'
             message = message.format(gamename, turn)
             print ('message to {0}: {1}'.format(channelname, message))
-            #await channel.send(message)
+            await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
 
@@ -69,11 +69,16 @@ class Dom5Bot(discord.Client):
         if (returncode != 0):
             print ('{0} returned error code: {1}'.format(self.dom5sh, returncode))
             return None
-        chkfilelist = list(savedgamedir.glob('*.chk'))
-        #print (len(chkfilelist))
-        chkfile = chkfilelist[0]
-        #print (chkfile)
-        #print (chkfile.exists())
+        chkfile = savedgamedir / "ftherlnd.chk"
+        if (not chkfile.exists()):
+            print ("no ftherlnd.chk, pick first")
+            chkfilelist = list(savedgamedir.glob('*.chk'))
+            #print (len(chkfilelist))
+            chkfile = chkfilelist[0]
+            #print (chkfile)
+            #print (chkfile.exists())
+        else:
+            print ("ftherlnd.chk found")
         async with aiofiles.open(str(chkfile), mode='r') as f:
             contents = await f.read()
             pattern = re.compile('turnnbr (\d+)')
