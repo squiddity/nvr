@@ -26,12 +26,16 @@ class Dom5Bot(discord.Client):
 
 
     async def send_game_update(self, gamename):
-        channel = discord.utils.get(self.get_all_channels(), name='general')
+        channelname = os.environ.get('CHANNEL')
+        channel = discord.utils.get(self.get_all_channels(), name=channelname)
+        if (not channel):
+            print ('could not find channel: {0}'.format(channelname))
+            return
         turn = await self.get_turn(gamename)
         if (turn):
             message = 'Time flows onwards in world {0} to turn {1}.'
             message = message.format(gamename, turn)
-            print (message)
+            print ('message to {0}: {1}'.format(channelname, message))
             #await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
@@ -46,7 +50,7 @@ class Dom5Bot(discord.Client):
         
 
     async def get_turn(self, gamename):
-        savedgamedir = Path.home() / '.dominions5' / 'savedgames' / gamename
+        savedgamedir = Path(os.environ.get('DOM5DIR')) / 'savedgames' / gamename
         if (not savedgamedir.exists()):
             print ('saved game could not be found at: {0}'.format(savedgamedir))
             return None
@@ -68,7 +72,7 @@ class Dom5Bot(discord.Client):
         
 async def main():
     dom5Bot = Dom5Bot()
-    # print (sys.argv[1])
+    print ('starting with token: {0}'.format(os.environ.get('DISCORD')))
     await asyncio.wait({dom5Bot.start(os.environ.get('DISCORD'))}, return_when=asyncio.FIRST_EXCEPTION)
 
 if __name__ == '__main__':
