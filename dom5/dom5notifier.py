@@ -12,23 +12,35 @@ class Dom5Bot(discord.Client):
 
     async def on_ready(self):
         print('Logged on as {0.user}!'.format(self))
+        # set up listen server
+        await asyncio.start_server(self.on_ping_connected, '127.0.0.1', 3113)
+        self.ready_event.set()
+        await self.send_game_update(sys.argv[2])
+
+
+    async def send_game_update(self, gamename):
         channel = discord.utils.get(self.get_all_channels(), name='general')
         print ("sending message")
-        turn = await get_turn()
+        turn = await get_turn(gamename)
         message = 'Time flows onwards in world {0} to turn {1}.'.format(sys.argv[2], turn)
         print (message)
         #await channel.send(message)
         await self.close()
 
-async def get_turn():
+    async def on_ping_connected(self, reader, writer):
+        print ("client connected")
+        self.send_game_update(sys.argv[2])
+        
+
+async def get_turn(gamename):
     dom5sh = Path.home() / '.steam' / 'steam' / 'steamapps' / 'common' / 'Dominions5' / 'dom5.sh'
     #print(dom5sh)
     #print(dom5sh.exists())
-    savedgamedir = Path.home() / '.dominions5' / 'savedgames' / sys.argv[2]
+    savedgamedir = Path.home() / '.dominions5' / 'savedgames' / gamename
     #print(savedgamedir)
     #print (savedgamedir.exists())
     dom5process = await asyncio.create_subprocess_shell(
-        '{0} --nosteam --verify {1}'.format(str(dom5sh), sys.argv[2]))
+        '{0} --nosteam --verify {1}'.format(str(dom5sh), gamename))
     await dom5process.wait()
     chkfilelist = list(savedgamedir.glob('*.chk'))
     #print (len(chkfilelist))
