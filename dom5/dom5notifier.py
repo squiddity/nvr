@@ -9,9 +9,16 @@ class Dom5Bot(discord.Client):
     def __init__(self):
         super().__init__()
         self.ready_event = asyncio.Event()
+        self.dom5sh = Path.home() / '.steam' / 'steam' / 'steamapps' / 'common' / 'Dominions5' / 'dom5.sh'
 
     async def on_ready(self):
         print('Logged on as {0.user}!'.format(self))
+        # double check dom5.sh exists, otherwise shut down
+        if (not self.dom5sh.exists()):
+            print ("could not find dom5.sh at {0}".format(self.dom5sh))
+            self.close()
+            return
+
         # set up listen server
         await asyncio.start_server(self.on_ping_connected, '127.0.0.1', 3113)
         self.ready_event.set()
@@ -19,40 +26,44 @@ class Dom5Bot(discord.Client):
 
     async def send_game_update(self, gamename):
         channel = discord.utils.get(self.get_all_channels(), name='general')
-        print ("sending message")
-        turn = await get_turn(gamename)
-        message = 'Time flows onwards in world {0} to turn {1}.'.format(sys.argv[2], turn)
-        print (message)
-        #await channel.send(message)
+        turn = await self.get_turn(gamename)
+        if (turn):
+            message = 'Time flows onwards in world {0} to turn {1}.'
+            message = message.format(gamename, turn)
+            print (message)
+            #await channel.send(message)
+        else:
+            print ('turn could not be found for {0}'.format(gamename))
 
     async def on_ping_connected(self, reader, writer):
         print ("client connected")
-        await self.send_game_update(sys.argv[2])
+        data = await reader.read(1024)
         writer.close()
+        gamename = data.decode("utf-8")
+        print ('game: {0}'.format(gamename))
+        await self.send_game_update(gamename)
         
 
-async def get_turn(gamename):
-    dom5sh = Path.home() / '.steam' / 'steam' / 'steamapps' / 'common' / 'Dominions5' / 'dom5.sh'
-    #print(dom5sh)
-    #print(dom5sh.exists())
-    savedgamedir = Path.home() / '.dominions5' / 'savedgames' / gamename
-    #print(savedgamedir)
-    #print (savedgamedir.exists())
-    dom5process = await asyncio.create_subprocess_shell(
-        '{0} --nosteam --verify {1}'.format(str(dom5sh), gamename))
-    await dom5process.wait()
-    chkfilelist = list(savedgamedir.glob('*.chk'))
-    #print (len(chkfilelist))
-    chkfile = chkfilelist[0]
-    #print (chkfile)
-    #print (chkfile.exists())
-    async with aiofiles.open(str(chkfile), mode='r') as f:
-        contents = await f.read()
-        pattern = re.compile('turnnbr (\d+)')
-        match = pattern.search(contents)
-        # print(match.group(1))
-        print ('turn is {0}'.format(match.group(1)))
-        return match.group(1)
+    async def get_turn(self, gamename):
+        savedgamedir = Path.home() / '.dominions5' / 'savedgames' / gamename
+        if (not savedgamedir.exists()):
+            print ('saved game could not be found at: {0}'.format(savedgamedir))
+            return None
+        dom5process = await asyncio.create_subprocess_shell(
+            '{0} --nosteam --verify {1}'.format(str(self.dom5sh), gamename))
+        await dom5process.wait()
+        chkfilelist = list(savedgamedir.glob('*.chk'))
+        #print (len(chkfilelist))
+        chkfile = chkfilelist[0]
+        #print (chkfile)
+        #print (chkfile.exists())
+        async with aiofiles.open(str(chkfile), mode='r') as f:
+            contents = await f.read()
+            pattern = re.compile('turnnbr (\d+)')
+            match = pattern.search(contents)
+            # print(match.group(1))
+            print ('turn is {0}'.format(match.group(1)))
+            return match.group(1)
         
 async def main():
     dom5Bot = Dom5Bot()
