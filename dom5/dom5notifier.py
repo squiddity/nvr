@@ -15,7 +15,6 @@ class Dom5Bot(discord.Client):
         # set up listen server
         await asyncio.start_server(self.on_ping_connected, '127.0.0.1', 3113)
         self.ready_event.set()
-        await self.send_game_update(sys.argv[2])
 
 
     async def send_game_update(self, gamename):
@@ -25,11 +24,11 @@ class Dom5Bot(discord.Client):
         message = 'Time flows onwards in world {0} to turn {1}.'.format(sys.argv[2], turn)
         print (message)
         #await channel.send(message)
-        await self.close()
 
     async def on_ping_connected(self, reader, writer):
         print ("client connected")
-        self.send_game_update(sys.argv[2])
+        await self.send_game_update(sys.argv[2])
+        writer.close()
         
 
 async def get_turn(gamename):
