@@ -10,7 +10,7 @@ class Dom5Bot(discord.Client):
     def __init__(self):
         super().__init__()
         self.ready_event = asyncio.Event()
-        self.dom5sh = Path.home() / '.steam' / 'steam' / 'steamapps' / 'common' / 'Dominions5' / 'dom5.sh'
+        self.dom5sh = Path(os.environ.get('DOM5GAMEDIR')) / 'dom5.sh'
 
     async def on_ready(self):
         print('Logged on as {0.user}!'.format(self))
@@ -21,7 +21,9 @@ class Dom5Bot(discord.Client):
             return
 
         # set up listen server
-        await asyncio.start_server(self.on_ping_connected, '127.0.0.1', os.environ.get('PORT'))
+        port = os.environ.get('PORT')
+        await asyncio.start_server(self.on_ping_connected, port=port)
+        print ('listening at: {0}'.format(port))
         self.ready_event.set()
 
 
@@ -43,20 +45,30 @@ class Dom5Bot(discord.Client):
     async def on_ping_connected(self, reader, writer):
         print ("client connected")
         data = await reader.read(1024)
+        writer.write("OK\n".encode())
         writer.close()
         gamename = data.decode("utf-8")
-        print ('game: {0}'.format(gamename))
-        await self.send_game_update(gamename)
+        if (len(gamename) > 0):
+            print ('game: {0}'.format(gamename))
+            await self.send_game_update(gamename)
+        else:
+            print ('empty gamename')
         
 
     async def get_turn(self, gamename):
-        savedgamedir = Path(os.environ.get('DOM5DIR')) / 'savedgames' / gamename
+        userdir = Path(os.environ.get('DOM5USERDIR'))
+        savedgamedir =  userdir / 'savedgames' / gamename
         if (not savedgamedir.exists()):
             print ('saved game could not be found at: {0}'.format(savedgamedir))
             return None
         dom5process = await asyncio.create_subprocess_shell(
-            '{0} --nosteam --verify {1}'.format(str(self.dom5sh), gamename))
-        await dom5process.wait()
+            'DOM5_CONF={2} {0} --nosteam --verify {1}'.format(
+                str(self.dom5sh), gamename, str(userdir)))
+        returncode = await dom5process.wait()
+        # todo: doesn't seem to be working, error still returns status 0
+        if (returncode != 0):
+            print ('{0} returned error code: {1}'.format(self.dom5sh, returncode))
+            return None
         chkfilelist = list(savedgamedir.glob('*.chk'))
         #print (len(chkfilelist))
         chkfile = chkfilelist[0]
@@ -73,7 +85,9 @@ class Dom5Bot(discord.Client):
 async def main():
     dom5Bot = Dom5Bot()
     print ('starting with token: {0}'.format(os.environ.get('DISCORD')))
-    await asyncio.wait({dom5Bot.start(os.environ.get('DISCORD'))}, return_when=asyncio.FIRST_EXCEPTION)
+    await asyncio.wait(
+        {dom5Bot.start(os.environ.get('DISCORD'))},
+        return_when=asyncio.FIRST_EXCEPTION)
 
 if __name__ == '__main__':
     asyncio.run(main())
