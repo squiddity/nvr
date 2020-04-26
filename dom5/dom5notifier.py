@@ -1,4 +1,5 @@
 import asyncio
+import aiofiles
 import discord
 from pathlib import Path
 import sys
@@ -34,8 +35,8 @@ async def get_turn():
     chkfile = chkfilelist[0]
     #print (chkfile)
     #print (chkfile.exists())
-    with chkfile.open() as f:
-        contents = f.read()
+    async with aiofiles.open(str(chkfile), mode='r') as f:
+        contents = await f.read()
         pattern = re.compile('turnnbr (\d+)')
         match = pattern.search(contents)
         # print(match.group(1))
@@ -44,7 +45,7 @@ async def get_turn():
         
 async def main():
     dom5Bot = Dom5Bot()
-    await asyncio.wait({dom5Bot.start('NzAzMDY0ODU5NzE3NDAyNzQ1.XqJMtw.qGn2KcSZuP1toPuet74tJqBZv3k')}, return_when=asyncio.FIRST_EXCEPTION)
+    await asyncio.wait({dom5Bot.start('NzAzMDY0ODU5NzE3NDAyNzQ1.XqTjiw.ISDpeAbM38dsXiTg88EQ7gi7NPQ')}, return_when=asyncio.FIRST_EXCEPTION)
 
 if __name__ == '__main__':
     asyncio.run(main())
