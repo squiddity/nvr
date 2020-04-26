@@ -3,6 +3,7 @@ import aiofiles
 import discord
 from pathlib import Path
 import sys
+import os
 import re
 
 class Dom5Bot(discord.Client):
@@ -20,7 +21,7 @@ class Dom5Bot(discord.Client):
             return
 
         # set up listen server
-        await asyncio.start_server(self.on_ping_connected, '127.0.0.1', 3113)
+        await asyncio.start_server(self.on_ping_connected, '127.0.0.1', os.environ.get('PORT'))
         self.ready_event.set()
 
 
@@ -68,7 +69,7 @@ class Dom5Bot(discord.Client):
 async def main():
     dom5Bot = Dom5Bot()
     # print (sys.argv[1])
-    await asyncio.wait({dom5Bot.start(sys.argv[1])}, return_when=asyncio.FIRST_EXCEPTION)
+    await asyncio.wait({dom5Bot.start(os.environ.get('DISCORD'))}, return_when=asyncio.FIRST_EXCEPTION)
 
 if __name__ == '__main__':
     asyncio.run(main())
