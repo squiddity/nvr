@@ -6,12 +6,16 @@ import sys
 import os
 import re
 
+FTHERLND = 'ftherlnd'
+
 class Dom5Bot(discord.Client):
     def __init__(self):
         super().__init__()
         self.ready_event = asyncio.Event()
         self.dom5sh = Path(os.environ.get('DOM5GAMEDIR')) / 'dom5.sh'
+        self.games = set()
 
+        
     async def on_ready(self):
         print('Logged on as {0.user}!'.format(self))
         # double check dom5.sh exists, otherwise shut down
@@ -26,16 +30,31 @@ class Dom5Bot(discord.Client):
         print ('listening at: {0}'.format(port))
         self.ready_event.set()
 
+        
+    async def on_ping_connected(self, reader, writer):
+        print ("client connected")
+        data = await reader.read(1024)
+        writer.write("OK\n".encode())
+        writer.close()
+        gamename = data.decode("utf-8")
+        if (len(gamename) > 0):
+            print ('game: {0}'.format(gamename))
+            self.games.add(gamename)
+            await self.send_postcheck_update(gamename)
+        else:
+            print ('empty gamename')        
 
-    async def send_game_update(self, gamename):
+            
+    async def send_postcheck_update(self, gamename):
         channelname = os.environ.get('CHANNEL')
         channel = discord.utils.get(self.get_all_channels(), name=channelname)
         if (not channel):
             print ('could not find channel: {0}'.format(channelname))
             return
+        self.games.add(gamename)
         turns = await self.get_turns(gamename)
-        if ('ftherlnd' in turns):            
-            turn = turns['ftherlnd']
+        if (FTHERLND in turns):            
+            turn = turns[FTHERLND]
         else:
             print("couldn't find ftherlnd, using first available")
             turn = list(turns.values())[0]
@@ -47,20 +66,33 @@ class Dom5Bot(discord.Client):
             await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
+        await self.send_team_status(self.games)
 
-    async def on_ping_connected(self, reader, writer):
-        print ("client connected")
-        data = await reader.read(1024)
-        writer.write("OK\n".encode())
-        writer.close()
-        gamename = data.decode("utf-8")
-        if (len(gamename) > 0):
-            print ('game: {0}'.format(gamename))
-            await self.send_game_update(gamename)
-        else:
-            print ('empty gamename')
-        
-
+            
+    async def send_team_status(self, games):
+        for game in games:
+            turns = await self.get_turns(game)
+            done = ()
+            doing = ()
+            if FTHERLND in turns:
+                (ftherlnd, master_turn) = turns.pop(FTHERLND)
+                for nation in turns.keys():
+                    nation_turn = turns[nation]
+                    if (nation_turn == master_turn):
+                        done.add(nation)
+                    elif (nation_turn == master_turn - 1):
+                        doing.add(nation)
+                    else:
+                        print("error: game turn is {0} but nation {1} turn is {2}".format(
+                            master_turn, nation, nation_turn))
+                print("The age in world {0} has reached {1} turns".format(game, master_turn))
+                print("The nations of {0} have cast their lots.".format(', '.join(done)))
+                print("The nations of {0} have yet to follow.".format(', '.join(doing)))
+            else:
+                for nation in turns.keys():
+                    nation_turn = turns[nation]
+                    print("{0} nation {1} is at turn {2}.".format(game, nation, nation_turn))
+    
     async def get_turns(self, gamename):
         userdir = Path(os.environ.get('DOM5USERDIR'))
         savedgamedir =  userdir / 'savedgames' / gamename
@@ -70,10 +102,10 @@ class Dom5Bot(discord.Client):
         dom5process = await asyncio.create_subprocess_shell(
             'DOM5_CONF={2} {0} --nosteam --verify {1}'.format(
                 str(self.dom5sh), gamename, str(userdir)))
-        returncode = await dom5process.wait()
+        retcode = await dom5process.wait()
         # todo: doesn't seem to be working, error still returns status 0
-        if (returncode != 0):
-            print ('{0} returned error code: {1}'.format(self.dom5sh, returncode))
+        if (retcode != 0):
+            print ('{0} returned error code: {1}'.format(self.dom5sh, retcode))
             return None
         chkfilelist = list(savedgamedir.glob('*.chk'))
         #print (len(chkfilelist))
