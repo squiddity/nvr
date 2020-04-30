@@ -119,14 +119,15 @@ class Dom5Bot(discord.Client):
         #print (len(chkfilelist))
         turns = {}
         for chkfile in chkfilelist:
+            chkfile = savedgamedir / chkfile
+            print("checking: {0}".format(str(chkfile)))
             #chkfile = savedgamedir / "ftherlnd.chk"
             if (not chkfile.exists()):
                 print ("{0} does not exist".format(chkfile))
-
-            nation_pattern = re.compile("mid_(.*)\\.chk")
-            nation_match = nation_pattern.search(str(chkfile))
-            nation = nation_match.group(1)
-            print(nation)
+            nation = chkfile.stem
+            if (nation.startswith('mid_')):
+                nation = nation[4:]
+            print("reading {0}".format(nation))
             async with aiofiles.open(str(chkfile), mode='r') as f:
                 contents = await f.read()
                 turn_pattern = re.compile('turnnbr (\d+)')
