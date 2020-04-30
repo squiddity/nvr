@@ -6,7 +6,7 @@ import sys
 import os
 import re
 
-FTHERLND = 'bakemono'
+FTHERLND = 'ftherlnd'
 
 class Dom5Bot(discord.Client):
     def __init__(self):
@@ -46,9 +46,11 @@ class Dom5Bot(discord.Client):
 
 
     async def on_message(self, message):
-        None
-        #await self.send_team_status(self.games, None)
-
+        if (message.content.startswith('?s')):
+            print ("team status")
+            channel = message.channel
+            await self.send_team_status(self.games, channel)
+        
             
     async def send_postcheck_update(self, gamename):
         channelname = os.environ.get('CHANNEL')
@@ -71,7 +73,6 @@ class Dom5Bot(discord.Client):
             await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
-        await self.send_team_status(self.games, channel)
 
             
     async def send_team_status(self, games, channel):
