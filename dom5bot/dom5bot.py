@@ -78,8 +78,8 @@ class Dom5Bot(discord.Client):
     async def send_team_status(self, games, channel):
         for game in games:
             turns = await self.get_turns(game)
-            done = ()
-            doing = ()
+            done = set()
+            doing = set()
             if FTHERLND in turns:
                 master_turn = turns.pop(FTHERLND)
                 for nation in turns.keys():
@@ -134,7 +134,7 @@ class Dom5Bot(discord.Client):
                 turn_match = turn_pattern.search(contents)
                 # print(match.group(1))
                 #print ('turn is {0}'.format(turn_match.group(1)))
-                turns[nation] = turn_match.group(1)
+                turns[nation] = int(turn_match.group(1))
         return turns
  
 async def main():
