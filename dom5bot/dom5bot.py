@@ -44,6 +44,11 @@ class Dom5Bot(discord.Client):
         else:
             print ('empty gamename')        
 
+
+    async def on_message(self, message):
+        None
+        #await self.send_team_status(self.games, None)
+
             
     async def send_postcheck_update(self, gamename):
         channelname = os.environ.get('CHANNEL')
@@ -66,10 +71,10 @@ class Dom5Bot(discord.Client):
             await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
-        await self.send_team_status(self.games)
+        await self.send_team_status(self.games, channel)
 
             
-    async def send_team_status(self, games):
+    async def send_team_status(self, games, channel):
         for game in games:
             turns = await self.get_turns(game)
             done = ()
@@ -83,15 +88,15 @@ class Dom5Bot(discord.Client):
                     elif (nation_turn == master_turn - 1):
                         doing.add(nation)
                     else:
-                        print("error: game turn is {0} but nation {1} turn is {2}".format(
+                       await  channel.send("error: game turn is {0} but nation {1} turn is {2}".format(
                             master_turn, nation, nation_turn))
-                print("The age in world {0} has reached {1} turns".format(game, master_turn))
-                print("The nations of {0} have cast their lots.".format(', '.join(done)))
-                print("The nations of {0} have yet to follow.".format(', '.join(doing)))
+                await channel.send("The age in world {0} has reached {1} turns".format(game, master_turn))
+                await channel.send("The nations of {0} have cast their lots.".format(', '.join(done)))
+                await channel.send("The nations of {0} have yet to follow.".format(', '.join(doing)))
             else:
                 for nation in turns.keys():
                     nation_turn = turns[nation]
-                    print("{0} nation {1} is at turn {2}.".format(game, nation, nation_turn))
+                    await channel.send("{0} nation {1} is at turn {2}.".format(game, nation, nation_turn))
     
     async def get_turns(self, gamename):
         userdir = Path(os.environ.get('DOM5USERDIR'))
@@ -124,7 +129,7 @@ class Dom5Bot(discord.Client):
                 turn_pattern = re.compile('turnnbr (\d+)')
                 turn_match = turn_pattern.search(contents)
                 # print(match.group(1))
-                print ('turn is {0}'.format(turn_match.group(1)))
+                #print ('turn is {0}'.format(turn_match.group(1)))
                 turns[nation] = turn_match.group(1)
         return turns
  
