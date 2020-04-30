@@ -11,6 +11,7 @@ class Dom5Bot(discord.Client):
         super().__init__()
         self.ready_event = asyncio.Event()
         self.dom5sh = Path(os.environ.get('DOM5GAMEDIR')) / 'dom5.sh'
+        self.turn_cache = {}
 
     async def on_ready(self):
         print('Logged on as {0.user}!'.format(self))
@@ -33,7 +34,7 @@ class Dom5Bot(discord.Client):
         if (not channel):
             print ('could not find channel: {0}'.format(channelname))
             return
-        turn = await self.get_turn(gamename)
+        turn = await self.refresh_turns(gamename)
         if (turn):
             message = 'Time flows onwards in world {0} to turn {1}.'
             message = message.format(gamename, turn)
@@ -55,7 +56,7 @@ class Dom5Bot(discord.Client):
             print ('empty gamename')
         
 
-    async def get_turn(self, gamename):
+    async def refresh_turns(self, gamename):
         userdir = Path(os.environ.get('DOM5USERDIR'))
         savedgamedir =  userdir / 'savedgames' / gamename
         if (not savedgamedir.exists()):
@@ -67,26 +68,32 @@ class Dom5Bot(discord.Client):
         returncode = await dom5process.wait()
         # todo: doesn't seem to be working, error still returns status 0
         if (returncode != 0):
-            print ('{0} returned error code: {1}'.format(self.dom5sh, returncode))
+            print ('{0} returned error c0de: {1}'.format(self.dom5sh, returncode))
             return None
-        chkfile = savedgamedir / "ftherlnd.chk"
-        if (not chkfile.exists()):
-            print ("no ftherlnd.chk, pick first")
-            chkfilelist = list(savedgamedir.glob('*.chk'))
-            #print (len(chkfilelist))
-            chkfile = chkfilelist[0]
-            #print (chkfile)
-            #print (chkfile.exists())
+        chkfilelist = list(savedgamedir.glob('*.chk'))
+        #print (len(chkfilelist))
+        for chkfile in chkfilelist:
+            #chkfile = savedgamedir / "ftherlnd.chk"
+            if (not chkfile.exists()):
+                print ("{0} does not exist".format(chkfile))
+
+            nation_pattern = re.compile("mid_(.*)\\.chk")
+            nation_match = nation_pattern.search(str(chkfile))
+            nation = nation_match.group(1)
+            print(nation)
+            async with aiofiles.open(str(chkfile), mode='r') as f:
+                contents = await f.read()
+                turn_pattern = re.compile('turnnbr (\d+)')
+                turn_match = turn_pattern.search(contents)
+                # print(match.group(1))
+                print ('turn is {0}'.format(turn_match.group(1)))
+                self.turn_cache[nation] = turn_match.group(1)
+        if ('ftherlnd' in self.turn_cache):            
+            return self.turn_cache['ftherlnd']
         else:
-            print ("ftherlnd.chk found")
-        async with aiofiles.open(str(chkfile), mode='r') as f:
-            contents = await f.read()
-            pattern = re.compile('turnnbr (\d+)')
-            match = pattern.search(contents)
-            # print(match.group(1))
-            print ('turn is {0}'.format(match.group(1)))
-            return match.group(1)
-        
+            print("couldn't find ftherlnd, using first available")
+            return list(self.turn_cache.values())[0]
+ 
 async def main():
     dom5Bot = Dom5Bot()
     print ('starting with token: {0}'.format(os.environ.get('DISCORD')))
