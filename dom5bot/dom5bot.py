@@ -6,7 +6,7 @@ import sys
 import os
 import re
 
-FTHERLND = 'ftherlnd'
+FTHERLND = 'bakemono'
 
 class Dom5Bot(discord.Client):
     def __init__(self):
@@ -80,7 +80,7 @@ class Dom5Bot(discord.Client):
             done = ()
             doing = ()
             if FTHERLND in turns:
-                (ftherlnd, master_turn) = turns.pop(FTHERLND)
+                master_turn = turns.pop(FTHERLND)
                 for nation in turns.keys():
                     nation_turn = turns[nation]
                     if (nation_turn == master_turn):
@@ -91,8 +91,10 @@ class Dom5Bot(discord.Client):
                        await  channel.send("error: game turn is {0} but nation {1} turn is {2}".format(
                             master_turn, nation, nation_turn))
                 await channel.send("The age in world {0} has reached {1} turns".format(game, master_turn))
-                await channel.send("The nations of {0} have cast their lots.".format(', '.join(done)))
-                await channel.send("The nations of {0} have yet to follow.".format(', '.join(doing)))
+                if (len(done) > 0):
+                    await channel.send("The nations of {0} have cast their lots.".format(', '.join(done)))
+                if (len(doing) > 0):
+                    await channel.send("The nations of {0} have yet to follow.".format(', '.join(doing)))
             else:
                 for nation in turns.keys():
                     nation_turn = turns[nation]
