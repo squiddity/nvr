@@ -89,9 +89,9 @@ class Dom5Bot(discord.Client):
                     elif (nation_turn == master_turn - 1):
                         doing.add(nation)
                     else:
-                       await  channel.send("error: game turn is {0} but nation {1} turn is {2}".format(
+                       print("error: game turn is {0} but nation {1} turn is {2}".format(
                             master_turn, nation, nation_turn))
-                await channel.send("The age in world {0} has reached {1} turns".format(game, master_turn))
+                await channel.send("The age in world {0} has reached {1} turns.".format(game, master_turn))
                 if (len(done) > 0):
                     await channel.send("The nations of {0} have cast their lots.".format(', '.join(done)))
                 if (len(doing) > 0):
