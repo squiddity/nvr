@@ -125,8 +125,9 @@ class Dom5Bot(discord.Client):
             if (not chkfile.exists()):
                 print ("{0} does not exist".format(chkfile))
             nation = chkfile.stem
-            if (nation.startswith('mid_')):
-                nation = nation[4:]
+            underscore = nation.find('_')
+            if (underscore > -1):
+                nation = nation[underscore+1:]
             print("reading {0}".format(nation))
             async with aiofiles.open(str(chkfile), mode='r') as f:
                 contents = await f.read()
