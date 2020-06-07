@@ -53,13 +53,21 @@ class Dom5Bot(discord.Client):
         
             
     async def send_postcheck_update(self, gamename):
-        channelname = os.environ.get('CHANNEL')
-        channel = discord.utils.get(self.get_all_channels(), name=channelname)
+        # first try game name
+        channel = discord.utils.get(self.get_all_channels(), name=gamename.lower())
         if (not channel):
-            print ('could not find channel: {0}'.format(channelname))
-            return
+            #try default channel spec
+            print ('could not find game channel, trying default: {0}'.format(gamename))
+            channel = discord.utils.get(self.get_all_channels(), name=os.environ.get('CHANNEL'))
+            if (not channel):
+                print ('could not find channel: {0}'.format(channelname))
+                return
         self.games.add(gamename)
         turns = await self.get_turns(gamename)
+        if (not turns):
+            print("no game turn data for gamename: {0}".format(gamename))
+            return
+        
         if (FTHERLND in turns):            
             turn = turns[FTHERLND]
         else:
@@ -69,15 +77,24 @@ class Dom5Bot(discord.Client):
         if (turn):
             message = 'Time flows onwards in world {0} to turn {1}.'
             message = message.format(gamename, turn)
-            print ('message to {0}: {1}'.format(channelname, message))
+            print ('message to {0}: {1}'.format(channel.name, message))
             await channel.send(message)
         else:
             print ('turn could not be found for {0}'.format(gamename))
 
             
     async def send_team_status(self, games, channel):
+        matchedgames = {x for x in games if x.lower() == channel.name}
+        print("matchedgames: {0}".format(matchedgames))
+        if (matchedgames and len(matchedgames) > 0):
+            print("channel matched game: {0} {1}".format(channel.name, matchedgames))
+            games = matchedgames
+
         for game in games:
             turns = await self.get_turns(game)
+            if (not turns):
+                print ("no turns for game name: {0}".format(game))
+                continue
             done = set()
             doing = set()
             if FTHERLND in turns:
