@@ -1,5 +1,6 @@
 import asyncio
 import discord
+import hashlib
 from hbmqtt.client import MQTTClient, ClientException
 from hbmqtt.session import ApplicationMessage
 from hbmqtt.mqtt.constants import QOS_0
@@ -7,6 +8,8 @@ from io import BytesIO
 import os
 import re
 import time
+
+snapshot_hash = {}
 
 class DiscordClient(discord.Client):
     def __init__(self):
@@ -21,7 +24,7 @@ async def run_mqtt(mqttClient: MQTTClient, discordClient: DiscordClient):
     print ("starting MQTT")
     await mqttClient.connect(os.environ.get('MQTT'))
 
-    await mqttClient.subscribe([('frigate/+/snapshot', QOS_0)])
+    await mqttClient.subscribe([('frigate/+/+/snapshot', QOS_0)])
 
     await discordClient.ready_event.wait()
 
@@ -30,13 +33,13 @@ async def run_mqtt(mqttClient: MQTTClient, discordClient: DiscordClient):
             message = await mqttClient.deliver_message()
             await handle_snapshot_message(message, discordClient)
     finally:
-        await mqttClient.unsubscribe(['frigate/+/snapshot'])
+        await mqttClient.unsubscribe(['frigate/+/+/snapshot'])
         await mqttClient.disconnect()
 
 
 async def handle_snapshot_message(message: ApplicationMessage, discordClient: discord.Client):
     message_topic = message.topic
-    camera_id_match = re.search('frigate/(.+?)/snapshot', message_topic)
+    camera_id_match = re.search('frigate/(.+?)/.+/snapshot', message_topic)
     if camera_id_match:
         camera_id = camera_id_match.group(1)
     else:
@@ -46,6 +49,13 @@ async def handle_snapshot_message(message: ApplicationMessage, discordClient: di
 
     snapshot_data = message.data
     snapshot_file = discord.File(BytesIO(snapshot_data), filename="snapshot.jpg")
+
+    oldhash = snapshot_hash.get(camera_id)
+    snapshot_hash[camera_id] = hashlib.md5(snapshot_data).hexdigest()
+
+    if oldhash == snapshot_hash[camera_id]:
+        print("skipping duplicate snapshot detected for ", camera_id)
+        return
 
     channel = discord.utils.get(discordClient.get_all_channels(), name=camera_id)
     if channel:
@@ -61,7 +71,9 @@ async def run_discord(discordClient: discord.Client):
 async def main():
     discordClient = DiscordClient()
     mqttClient = MQTTClient()
-    await asyncio.wait({run_mqtt(mqttClient, discordClient), run_discord(discordClient)}, return_when=asyncio.FIRST_EXCEPTION)
+    done, pending = await asyncio.wait({run_mqtt(mqttClient, discordClient), run_discord(discordClient)}, return_when=asyncio.FIRST_EXCEPTION)
+    for future in done:
+        print(future.result())
 
 if __name__ == '__main__':
     asyncio.run(main())
